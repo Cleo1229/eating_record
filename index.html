@@ -542,9 +542,37 @@ function mkCard(e) {
 }
 
 function delEntry(id) {
-  if (!confirm('確定刪除？')) return;
+  // Remove immediately, offer undo
+  const removed = S.entries.find(e => e.id===id);
+  if (!removed) return;
   S.entries = S.entries.filter(e => e.id!==id);
-  saveS(); renderToday(); toast('已刪除');
+  saveS();
+  refreshActivePanel();
+
+  // Undo toast
+  const el = document.getElementById('toast');
+  el.innerHTML = '已刪除 <span onclick="undoDel()" style="color:var(--acc2);cursor:pointer;margin-left:8px;font-weight:500">復原</span>';
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  window._lastDeleted = removed;
+  toastTimer = setTimeout(() => { el.classList.remove('show'); window._lastDeleted=null; }, 4000);
+}
+
+function undoDel() {
+  if (!window._lastDeleted) return;
+  S.entries.push(window._lastDeleted);
+  S.entries.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  saveS();
+  refreshActivePanel();
+  window._lastDeleted = null;
+  toast('已復原');
+}
+
+function refreshActivePanel() {
+  const active = document.querySelector('.tab.active')?.dataset.tab;
+  if (active==='today') renderToday();
+  else if (active==='history') renderHistory();
+  else if (active==='stats') renderStats();
 }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
