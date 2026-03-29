@@ -990,9 +990,15 @@ async function parseEmailsWithAI(emails) {
   const results = [];
   for (const email of emails) {
     try {
-      const prompt = `你是一個解析 Uber Eats 訂單確認信的助手。以下是從 EDM 格式信件中擷取的文字（可能雜亂）。請嘗試找出：1) 餐廳名稱 2) 食物品項 3) 總金額（NT$ 數字）。台灣 Uber Eats 信件中金額格式通常是 NT$XXX 或 $XXX。
-以 JSON 格式回覆：{"restaurant":"餐廳名","items":["食物1","食物2"],"total":金額數字}
-如果這封信完全沒有任何食物或金額資訊（例如純促銷廣告），才回覆 {"skip":true}。有任何訂單相關內容都盡量擷取。只回覆JSON，不要其他文字。
+      const prompt = `你是一個解析 Uber Eats 訂單確認信的助手。以下是從 EDM 格式信件中擷取的文字（可能雜亂）。請嘗試找出：
+1) 餐廳名稱
+2) 食物品項
+3) 總金額（NT$ 數字）
+4) 訂單時間：信件內文中通常有「YYYY 年 M 月 D 日 在 上午/下午 H:MM」這樣的中文時間，或英文格式。請擷取這個時間，轉成 {"date":"YYYY-MM-DD","time":"HH:MM"} 的 24 小時制格式。如果是下午加 12（下午 7:19 → 19:19）。
+
+以 JSON 格式回覆：{"restaurant":"餐廳名","items":["食物1","食物2"],"total":金額數字,"date":"YYYY-MM-DD","time":"HH:MM"}
+如果找不到時間就省略 date 和 time 欄位。
+如果這封信完全沒有任何食物或金額資訊（例如純促銷廣告），才回覆 {"skip":true}。只回覆JSON，不要其他文字。
 
 Gmail snippet: ${email.snippet||''}
 
@@ -1010,7 +1016,9 @@ ${email.body}`;
       if (!jm) continue;
       const r = JSON.parse(jm[0]);
       if (r.skip) continue;
-      results.push({ ...email, restaurant: r.restaurant||'Uber Eats', items: r.items||[], total: r.total||0 });
+      const finalDate = r.date || email.date;
+      const finalTime = r.time || email.time;
+      results.push({ ...email, date: finalDate, time: finalTime, restaurant: r.restaurant||'Uber Eats', items: r.items||[], total: r.total||0 });
     } catch(e) { console.warn('parse error', e); }
   }
   return results;
