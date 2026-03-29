@@ -761,9 +761,9 @@ async function fetchUberEmails() {
     };
 
     // Search Gmail for Uber Eats order confirmation emails
-    const q = encodeURIComponent('from:(uber.eats@uber.com OR ubereats@uber.com OR noreply@uber.com) subject:(訂單 OR order OR "Your order" OR "你的訂單") newer_than:90d');
+    const q = encodeURIComponent('from:(uber.com) newer_than:180d');
     setP(15, '搜尋信件中…');
-    const listResp = await gFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${q}&maxResults=30`);
+    const listResp = await gFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${q}&maxResults=50`);
     const msgs = listResp.messages || [];
 
     if (!msgs.length) {
@@ -784,7 +784,7 @@ async function fetchUberEmails() {
       const m = await gFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgs[i].id}?format=full`);
       const body = extractEmailText(m);
       const date = new Date(parseInt(m.internalDate));
-      rawEmails.push({ id: m.id, date: dateStr(date), time: `${pad(date.getHours())}:${pad(date.getMinutes())}`, body });
+      rawEmails.push({ id: m.id, date: dateStr(date), time: `${pad(date.getHours())}:${pad(date.getMinutes())}`, body, snippet: m.snippet||'' });
       setP(30 + Math.round((i+1)/Math.min(msgs.length,20)*40), `解析第 ${i+1}/${Math.min(msgs.length,20)} 封…`);
     }
 
@@ -814,24 +814,40 @@ async function gFetch(url) {
 }
 
 function extractEmailText(msg) {
-  // Try to extract plain text or HTML from email payload
+  // Collect all text parts (plain + html), prefer plain but use html as fallback
+  let plainText = '';
+  let htmlText = '';
+
   const extract = (part) => {
-    if (!part) return '';
+    if (!part) return;
     if (part.mimeType === 'text/plain' && part.body?.data) {
-      return atob(part.body.data.replace(/-/g,'+').replace(/_/g,'/'));
-    }
-    if (part.parts) {
-      for (const p of part.parts) { const t = extract(p); if (t) return t; }
+      plainText += atob(part.body.data.replace(/-/g,'+').replace(/_/g,'/')) + '\n';
     }
     if (part.mimeType === 'text/html' && part.body?.data) {
       const html = atob(part.body.data.replace(/-/g,'+').replace(/_/g,'/'));
       const tmp = document.createElement('div');
       tmp.innerHTML = html;
-      return tmp.textContent || '';
+      // Extract meaningful text nodes, skip nav/button noise
+      const walker = document.createTreeWalker(tmp, NodeFilter.SHOW_TEXT);
+      const texts = [];
+      let node;
+      while (node = walker.nextNode()) {
+        const t = node.textContent.trim();
+        if (t.length > 1) texts.push(t);
+      }
+      htmlText += texts.join(' | ') + '\n';
     }
-    return '';
+    if (part.parts) part.parts.forEach(extract);
   };
-  return extract(msg.payload).slice(0, 2000);  // limit to 2000 chars per email
+
+  extract(msg.payload);
+
+  // Also try snippet from Gmail
+  const snippet = msg.snippet || '';
+
+  const combined = (plainText || htmlText || snippet);
+  // Remove excessive whitespace
+  return combined.replace(/\s{3,}/g, '  ').slice(0, 3000);
 }
 
 async function parseEmailsWithAI(emails) {
@@ -842,11 +858,13 @@ async function parseEmailsWithAI(emails) {
   const results = [];
   for (const email of emails) {
     try {
-      const prompt = `以下是一封 Uber Eats 訂單確認信的文字內容。請從中擷取：1) 餐廳名稱 2) 訂購的食物品項（列表） 3) 訂單總金額（只要數字）。
+      const prompt = `你是一個解析 Uber Eats 訂單確認信的助手。以下是從 EDM 格式信件中擷取的文字（可能雜亂）。請嘗試找出：1) 餐廳名稱 2) 食物品項 3) 總金額（NT$ 數字）。台灣 Uber Eats 信件中金額格式通常是 NT$XXX 或 $XXX。
 以 JSON 格式回覆：{"restaurant":"餐廳名","items":["食物1","食物2"],"total":金額數字}
-如果無法擷取，回覆 {"skip":true}。只回覆JSON。
+如果這封信根本不是訂單確認信，回覆 {"skip":true}。只回覆JSON，不要其他文字。
 
-信件內容：
+Gmail snippet: ${email.snippet||''}
+
+信件文字：
 ${email.body}`;
 
       const resp = await fetch('https://api.anthropic.com/v1/messages', {
