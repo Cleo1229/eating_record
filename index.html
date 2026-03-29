@@ -496,7 +496,7 @@ function mkCard(e) {
       <div class="entry-chips">
         ${e.cal   ? `<span class="chip cal">🔥 ${e.cal} kcal</span>` : ''}
         ${e.price ? `<span class="chip price">💰 ${e.price} 元</span>` : ''}
-        ${e.source==='uber' ? `<span class="chip uber">Uber Eats</span>` : `<span class="chip time">${e.time}</span>`}
+        ${e.source==='uber' ? `<span class="chip uber">🛵 Uber Eats</span><span class="chip time">${e.date} ${e.time}</span>` : `<span class="chip time">${e.time}</span>`}
       </div>
       ${e.note ? `<div class="entry-note">${esc(e.note)}</div>` : ''}
     </div>
@@ -761,9 +761,9 @@ async function fetchUberEmails() {
     };
 
     // Search Gmail for Uber Eats order confirmation emails
-    const q = encodeURIComponent('from:(uber.com) newer_than:180d');
+    const q = encodeURIComponent('from:noreply@uber.com newer_than:30d');
     setP(15, '搜尋信件中…');
-    const listResp = await gFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${q}&maxResults=50`);
+    const listResp = await gFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${q}&maxResults=100`);
     const msgs = listResp.messages || [];
 
     if (!msgs.length) {
@@ -780,12 +780,12 @@ async function fetchUberEmails() {
 
     // Fetch each email body
     const rawEmails = [];
-    for (let i=0; i<Math.min(msgs.length, 20); i++) {
+    for (let i=0; i<Math.min(msgs.length, 50); i++) {
       const m = await gFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgs[i].id}?format=full`);
       const body = extractEmailText(m);
       const date = new Date(parseInt(m.internalDate));
       rawEmails.push({ id: m.id, date: dateStr(date), time: `${pad(date.getHours())}:${pad(date.getMinutes())}`, body, snippet: m.snippet||'' });
-      setP(30 + Math.round((i+1)/Math.min(msgs.length,20)*40), `解析第 ${i+1}/${Math.min(msgs.length,20)} 封…`);
+      setP(30 + Math.round((i+1)/Math.min(msgs.length,50)*40), `解析第 ${i+1}/${Math.min(msgs.length,20)} 封…`);
     }
 
     setP(75, 'AI 分析訂單內容…');
@@ -860,7 +860,7 @@ async function parseEmailsWithAI(emails) {
     try {
       const prompt = `你是一個解析 Uber Eats 訂單確認信的助手。以下是從 EDM 格式信件中擷取的文字（可能雜亂）。請嘗試找出：1) 餐廳名稱 2) 食物品項 3) 總金額（NT$ 數字）。台灣 Uber Eats 信件中金額格式通常是 NT$XXX 或 $XXX。
 以 JSON 格式回覆：{"restaurant":"餐廳名","items":["食物1","食物2"],"total":金額數字}
-如果這封信根本不是訂單確認信，回覆 {"skip":true}。只回覆JSON，不要其他文字。
+如果這封信完全沒有任何食物或金額資訊（例如純促銷廣告），才回覆 {"skip":true}。有任何訂單相關內容都盡量擷取。只回覆JSON，不要其他文字。
 
 Gmail snippet: ${email.snippet||''}
 
