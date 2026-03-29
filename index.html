@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#17150D">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="食記">
+  <title>食記</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:     #17150D;
+      --s1:     #1F1D13;
+      --s2:     #272419;
+      --s3:     #302D1E;
+      --border: #363220;
+      --text:   #EDE7D6;
+      --muted:  #9A9070;
+      --accent: #C8581C;
+      --acc2:   #E07040;
+      --green:  #6A9660;
+      --blue:   #5A8BAA;
+      --r:      14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { height: 100%; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Noto Sans TC', -apple-system, sans-serif;
+      max-width: 430px; margin: 0 auto;
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+    .hdr {
+      padding: 52px 20px 0; background: var(--bg);
+      position: sticky; top: 0; z-index: 20;
+    }
+    .hdr-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .hdr-title { font-family: 'Noto Serif TC', serif; font-size: 30px; font-weight: 700; line-height: 1; }
+    .hdr-date { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .hdr-btns { display: flex; gap: 8px; }
+    .icon-btn {
+      background: var(--s2); border: 1px solid var(--border); color: var(--muted);
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 17px; flex-shrink: 0; transition: color .2s;
+    }
+    .icon-btn:active { color: var(--text); }
+    .tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .tab {
+      flex: 1; text-align: center; padding: 10px 0; font-size: 13px; color: var(--muted);
+      cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: all .2s; letter-spacing: .03em;
+    }
+    .tab.active { color: var(--acc2); border-bottom-color: var(--acc2); font-weight: 500; }
+    .content { flex: 1; overflow-y: auto; padding: 18px 16px 110px; -webkit-overflow-scrolling: touch; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* SUMMARY */
+    .summary { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; margin-bottom: 18px; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .sum-label { font-size: 10px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; display: block; margin-bottom: 5px; }
+    .sum-val { font-family: 'Noto Serif TC', serif; font-size: 30px; font-weight: 700; line-height: 1; }
+    .sum-unit { font-size: 12px; color: var(--muted); margin-left: 3px; }
+    .cal-track { height: 5px; background: var(--s3); border-radius: 3px; overflow: hidden; }
+    .cal-track-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--acc2)); border-radius: 3px; transition: width .6s ease; }
+    .sum-goal { font-size: 11px; color: var(--muted); text-align: right; margin-top: 5px; }
+
+    /* UBER IMPORT BANNER */
+    .uber-banner {
+      background: linear-gradient(135deg, #1a2a1a, #1a1a2a);
+      border: 1px solid var(--border); border-radius: var(--r);
+      padding: 14px 16px; margin-bottom: 18px;
+      display: flex; align-items: center; gap: 12px; cursor: pointer;
+      transition: border-color .2s;
+    }
+    .uber-banner:active { border-color: var(--green); }
+    .uber-banner-icon { font-size: 26px; flex-shrink: 0; }
+    .uber-banner-body { flex: 1; }
+    .uber-banner-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+    .uber-banner-sub { font-size: 11px; color: var(--muted); }
+    .uber-connected { background: rgba(106,150,96,.12); border-color: var(--green); }
+    .uber-connected .uber-banner-title { color: var(--green); }
+
+    /* SECTION */
+    .sec-title { font-size: 10px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+
+    /* ENTRY */
+    .entry-list { display: flex; flex-direction: column; gap: 8px; }
+    .entry {
+      background: var(--s1); border: 1px solid var(--border); border-radius: 12px;
+      padding: 12px; display: flex; gap: 11px; position: relative; overflow: hidden;
+    }
+    .entry.uber-entry { border-left: 3px solid #1DB954; }
+    .entry-thumb {
+      width: 50px; height: 50px; border-radius: 8px; flex-shrink: 0;
+      background: var(--s2); display: flex; align-items: center; justify-content: center;
+      font-size: 22px; overflow: hidden;
+    }
+    .entry-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .entry-body { flex: 1; min-width: 0; }
+    .entry-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entry-chips { display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+    .chip { font-size: 12px; }
+    .chip.cal { color: var(--acc2); }
+    .chip.price { color: var(--green); }
+    .chip.time { color: var(--muted); }
+    .chip.uber { color: #1DB954; }
+    .entry-note { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+    .entry-del {
+      position: absolute; top: 8px; right: 8px;
+      background: none; border: none; color: var(--muted); opacity: .5;
+      cursor: pointer; font-size: 14px; padding: 4px; transition: opacity .2s;
+    }
+    .entry:hover .entry-del, .entry:active .entry-del { opacity: 1; }
+
+    .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty .big { font-size: 44px; opacity: .45; margin-bottom: 12px; }
+    .empty p { font-size: 13px; line-height: 1.7; }
+
+    /* HISTORY */
+    .hist-day { margin-bottom: 22px; }
+    .hist-day-hdr { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+    .hist-date { font-family: 'Noto Serif TC', serif; font-size: 15px; font-weight: 700; }
+    .hist-stats { font-size: 12px; color: var(--muted); text-align: right; }
+
+    /* STATS */
+    .stats-sec { margin-bottom: 24px; }
+    .chart-wrap { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r); padding: 14px; height: 190px; position: relative; }
+    .week-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat-box { background: var(--s1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 12px; }
+    .stat-box label { font-size: 10px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+    .stat-val { font-family: 'Noto Serif TC', serif; font-size: 22px; font-weight: 700; line-height: 1; }
+    .orange { color: var(--acc2); }
+    .green-c { color: var(--green); }
+    .blue-c { color: var(--blue); }
+
+    /* FAB */
+    .fab-wrap {
+      position: fixed; bottom: 0;
+      left: 50%; transform: translateX(-50%);
+      width: min(100vw, 430px);
+      display: flex; justify-content: flex-end;
+      padding: 0 24px 32px; pointer-events: none;
+    }
+    .fab {
+      pointer-events: all;
+      background: var(--accent); color: white; border: none;
+      width: 58px; height: 58px; border-radius: 50%; font-size: 30px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; box-shadow: 0 6px 28px rgba(200,88,28,.55);
+      transition: transform .18s, box-shadow .18s;
+    }
+    .fab:active { transform: scale(.92); box-shadow: 0 2px 14px rgba(200,88,28,.4); }
+
+    /* OVERLAY */
+    .overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.72); z-index: 100;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .24s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+    .sheet {
+      background: var(--s1); border-radius: 22px 22px 0 0;
+      width: 100%; max-width: 430px; padding: 16px 18px 40px;
+      transform: translateY(100%);
+      transition: transform .28s cubic-bezier(.32,.72,0,1);
+      max-height: 92dvh; overflow-y: auto;
+    }
+    .overlay.open .sheet { transform: translateY(0); }
+    .handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 18px; }
+    .sheet-title { font-family: 'Noto Serif TC', serif; font-size: 20px; font-weight: 700; margin-bottom: 18px; }
+
+    /* FORM */
+    .fg { margin-bottom: 14px; }
+    .flabel { font-size: 11px; color: var(--muted); letter-spacing: .07em; text-transform: uppercase; display: block; margin-bottom: 7px; }
+    .finput {
+      width: 100%; background: var(--s2); border: 1px solid var(--border);
+      border-radius: 11px; padding: 13px 14px;
+      color: var(--text); font-family: 'Noto Sans TC', sans-serif;
+      font-size: 15px; outline: none; transition: border-color .18s; -webkit-appearance: none;
+    }
+    .finput:focus { border-color: var(--accent); }
+    .finput::placeholder { color: var(--muted); opacity: .6; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .mtog { display: flex; background: var(--s2); border-radius: 10px; padding: 3px; margin-bottom: 14px; }
+    .mbtn { flex: 1; padding: 8px; text-align: center; font-size: 13px; color: var(--muted); cursor: pointer; border-radius: 8px; transition: all .18s; }
+    .mbtn.on { background: var(--s3); color: var(--text); }
+    .photo-zone {
+      border: 2px dashed var(--border); border-radius: 11px;
+      padding: 22px; text-align: center; cursor: pointer;
+      position: relative; overflow: hidden; transition: border-color .18s;
+    }
+    .photo-zone:active { border-color: var(--accent); }
+    .photo-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .photo-zone .pz-icon { font-size: 30px; margin-bottom: 6px; }
+    .photo-zone p { font-size: 12px; color: var(--muted); }
+    #photo-prev { width: 100%; max-height: 200px; object-fit: cover; border-radius: 11px; display: none; margin-bottom: 10px; }
+    .ai-box { background: var(--s2); border: 1px solid var(--border); border-radius: 11px; padding: 14px; margin-bottom: 14px; display: none; }
+    .ai-box.show { display: block; }
+    .ai-food { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+    .ai-kcal { font-family: 'Noto Serif TC', serif; font-size: 26px; font-weight: 700; color: var(--acc2); }
+    .ai-note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--acc2); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #ai-loading { display: none; text-align: center; padding: 12px; font-size: 13px; color: var(--muted); }
+    .btn { width: 100%; padding: 15px; border-radius: 13px; font-size: 15px; font-family: 'Noto Sans TC', sans-serif; font-weight: 500; cursor: pointer; border: none; transition: all .18s; display: block; }
+    .btn-prime { background: var(--accent); color: white; }
+    .btn-prime:active { background: var(--acc2); }
+    .btn-prime:disabled { background: var(--s3); color: var(--muted); cursor: default; }
+    .btn-sec { background: var(--s2); color: var(--text); border: 1px solid var(--border); margin-top: 8px; }
+    .btn-ai { background: var(--s2); color: var(--acc2); border: 1px solid var(--accent); margin-bottom: 10px; padding: 12px; }
+    .btn-ai:disabled { color: var(--muted); border-color: var(--border); cursor: default; }
+    .btn-google { background: white; color: #333; border: none; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; border-radius: 13px; width: 100%; font-size: 15px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; font-weight: 500; margin-bottom: 10px; }
+    .btn-google:active { background: #f0f0f0; }
+    .btn-danger { background: #3a1a1a; color: #e07070; border: 1px solid #5a2a2a; margin-top: 8px; }
+    .settings-note { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+    .divider { height: 1px; background: var(--border); margin: 18px 0; }
+    .sec-hdr { font-size: 11px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 12px; }
+
+    /* UBER SHEET */
+    .gmail-status {
+      background: var(--s2); border: 1px solid var(--border);
+      border-radius: 11px; padding: 14px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .gmail-avatar { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; background: var(--s3); display: flex; align-items: center; justify-content: center; font-size: 18px; overflow: hidden; }
+    .gmail-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .gmail-name { font-size: 14px; font-weight: 500; }
+    .gmail-email { font-size: 11px; color: var(--muted); }
+
+    /* Import items */
+    .import-list { display: flex; flex-direction: column; gap: 8px; max-height: 42dvh; overflow-y: auto; margin-bottom: 14px; }
+    .import-item {
+      background: var(--s2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px;
+      display: flex; align-items: center; gap: 10px; cursor: pointer;
+    }
+    .import-item.selected { border-color: var(--green); background: rgba(106,150,96,.1); }
+    .import-item-check { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all .15s; }
+    .import-item.selected .import-item-check { background: var(--green); border-color: var(--green); }
+    .import-item-body { flex: 1; min-width: 0; }
+    .import-item-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .import-item-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+    .import-progress { text-align: center; padding: 24px; font-size: 13px; color: var(--muted); }
+    .import-progress .big-spin { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto 12px; }
+    .import-progress-bar { height: 3px; background: var(--s3); border-radius: 3px; overflow: hidden; margin-top: 12px; }
+    .import-progress-fill { height: 100%; background: var(--green); border-radius: 3px; transition: width .3s; }
+
+    .toast { position: fixed; top: 68px; left: 50%; transform: translateX(-50%) translateY(-10px); background: var(--s3); color: var(--text); border: 1px solid var(--border); border-radius: 100px; padding: 9px 18px; font-size: 13px; opacity: 0; transition: all .28s; z-index: 300; white-space: nowrap; max-width: 90vw; text-align: center; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .sel-all { font-size: 12px; color: var(--acc2); cursor: pointer; float: right; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-top">
+    <div>
+      <div class="hdr-title">食記</div>
+      <div class="hdr-date" id="hdr-date"></div>
+    </div>
+    <div class="hdr-btns">
+      <button class="icon-btn" onclick="openUberSheet()" aria-label="Uber匯入" title="匯入 Uber Eats">🛵</button>
+      <button class="icon-btn" onclick="openSettings()" aria-label="設定">⚙</button>
+    </div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="today" onclick="switchTab('today')">今天</div>
+    <div class="tab" data-tab="history" onclick="switchTab('history')">歷史</div>
+    <div class="tab" data-tab="stats" onclick="switchTab('stats')">統計</div>
+  </div>
+</header>
+
+<div class="content">
+  <!-- TODAY -->
+  <div id="panel-today" class="panel active">
+    <div class="summary">
+      <div class="summary-grid">
+        <div>
+          <span class="sum-label">今日熱量</span>
+          <div><span class="sum-val" id="day-cal">0</span><span class="sum-unit">kcal</span></div>
+        </div>
+        <div>
+          <span class="sum-label">今日花費</span>
+          <div><span class="sum-val" id="day-price">0</span><span class="sum-unit">元</span></div>
+        </div>
+      </div>
+      <div class="cal-track"><div class="cal-track-fill" id="cal-fill" style="width:0%"></div></div>
+      <div class="sum-goal" id="cal-goal-txt"></div>
+    </div>
+    <div class="sec-title">今日紀錄</div>
+    <div id="today-list" class="entry-list"></div>
+    <div id="today-empty" class="empty" style="display:none">
+      <div class="big">🍽</div>
+      <p>還沒有紀錄<br>點右下角 <strong>+</strong> 開始記錄<br>或點 🛵 匯入 Uber Eats</p>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="panel-history" class="panel">
+    <div id="hist-content"></div>
+    <div id="hist-empty" class="empty" style="display:none">
+      <div class="big">📅</div><p>還沒有歷史紀錄</p>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div id="panel-stats" class="panel">
+    <div class="stats-sec">
+      <div class="sec-title">過去 7 天熱量（kcal）</div>
+      <div class="chart-wrap"><canvas id="chart-cal"></canvas></div>
+    </div>
+    <div class="stats-sec">
+      <div class="sec-title">過去 7 天花費（元）</div>
+      <div class="chart-wrap"><canvas id="chart-price"></canvas></div>
+    </div>
+    <div class="stats-sec">
+      <div class="sec-title">本週摘要</div>
+      <div class="week-grid">
+        <div class="stat-box"><label>均熱量</label><div class="stat-val orange" id="st-cal">—</div></div>
+        <div class="stat-box"><label>本週花費</label><div class="stat-val green-c" id="st-price">—</div></div>
+        <div class="stat-box"><label>筆數</label><div class="stat-val blue-c" id="st-cnt">—</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<div class="fab-wrap">
+  <button class="fab" onclick="openAdd()" aria-label="新增">+</button>
+</div>
+
+<!-- ADD SHEET -->
+<div id="add-overlay" class="overlay" onclick="bgClose(event,'add-overlay')">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">新增飲食</div>
+    <div class="mtog">
+      <div class="mbtn on" id="m-photo" onclick="setMode('photo')">📷 拍照</div>
+      <div class="mbtn" id="m-text" onclick="setMode('text')">⌨️ 打字</div>
+    </div>
+    <div id="sec-photo" class="fg">
+      <img id="photo-prev" alt="預覽">
+      <div class="photo-zone" id="photo-zone">
+        <input type="file" accept="image/*" capture="environment" id="photo-in" onchange="onPhoto(event)">
+        <div class="pz-icon">📷</div>
+        <p>點擊拍照或選取圖片</p>
+      </div>
+    </div>
+    <div id="sec-text" class="fg" style="display:none">
+      <input type="text" class="finput" id="text-food" placeholder="例：排骨飯、拿鐵咖啡大杯" oninput="onTextIn()">
+    </div>
+    <button class="btn btn-ai" id="btn-ai" onclick="doAnalyze()" disabled>🤖 AI 估算熱量</button>
+    <div id="ai-loading"><span class="spinner"></span>AI 分析中…</div>
+    <div id="ai-box" class="ai-box">
+      <div class="ai-food" id="ai-food-name"></div>
+      <div><span class="ai-kcal" id="ai-kcal-val"></span><span style="font-size:12px;color:var(--muted)"> kcal</span></div>
+      <div class="ai-note" id="ai-breakdown"></div>
+    </div>
+    <div class="row2" style="margin-bottom:12px">
+      <div><label class="flabel">食物名稱</label><input type="text" class="finput" id="f-name" placeholder="名稱"></div>
+      <div><label class="flabel">熱量 kcal</label><input type="number" class="finput" id="f-cal" placeholder="0"></div>
+    </div>
+    <div class="fg"><label class="flabel">價錢（元，可略）</label><input type="number" class="finput" id="f-price" placeholder="0"></div>
+    <div class="fg"><label class="flabel">備註（可略）</label><input type="text" class="finput" id="f-note" placeholder="備註…"></div>
+    <button class="btn btn-prime" onclick="saveEntry()">記錄</button>
+  </div>
+</div>
+
+<!-- UBER SHEET -->
+<div id="uber-overlay" class="overlay" onclick="bgClose(event,'uber-overlay')">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">匯入 Uber Eats</div>
+    <div id="uber-body"></div>
+  </div>
+</div>
+
+<!-- SETTINGS SHEET -->
+<div id="set-overlay" class="overlay" onclick="bgClose(event,'set-overlay')">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">設定</div>
+
+    <div class="sec-hdr">Claude AI</div>
+    <div class="fg">
+      <label class="flabel">Anthropic API Key</label>
+      <p class="settings-note">用於 AI 拍照估算熱量。只存本地，不上傳任何第三方。</p>
+      <input type="password" class="finput" id="set-key" placeholder="sk-ant-…" style="font-family:monospace;font-size:13px">
+    </div>
+
+    <div class="divider"></div>
+    <div class="sec-hdr">Google / Gmail</div>
+    <div class="fg">
+      <label class="flabel">Google OAuth Client ID</label>
+      <p class="settings-note">用於匯入 Uber Eats 訂單確認信。請在 Google Cloud Console 建立 OAuth 憑證，類型選「網頁應用程式」。</p>
+      <input type="text" class="finput" id="set-gcid" placeholder="xxxxxx.apps.googleusercontent.com" style="font-size:12px">
+    </div>
+
+    <div class="divider"></div>
+    <div class="sec-hdr">個人目標</div>
+    <div class="fg">
+      <label class="flabel">每日熱量目標（kcal）</label>
+      <input type="number" class="finput" id="set-goal" placeholder="2000">
+    </div>
+
+    <button class="btn btn-prime" onclick="saveSettings()" style="margin-bottom:8px">儲存設定</button>
+    <button class="btn btn-sec" onclick="closeOverlay('set-overlay')">關閉</button>
+  </div>
+</div>
+
+<!-- Load Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+<script>
+// ══════════════════════════════════════
+// STATE
+// ══════════════════════════════════════
+let S = { entries: [], apiKey: '', goal: 2000, googleClientId: '9380260420-uoh18n01opthvo6taqf5dq4jockr0keu.apps.googleusercontent.com' };
+let mode = 'photo';
+let photoB64 = null;
+let thumbB64 = null;
+let charts   = {};
+
+// Google auth state
+let gAccessToken = null;
+let gUserInfo    = null;
+
+function loadS() {
+  try { const d = localStorage.getItem('fl3'); if (d) S = { ...S, ...JSON.parse(d) }; } catch(e) {}
+}
+function saveS() { localStorage.setItem('fl3', JSON.stringify(S)); }
+function dateStr(d) { d = d||new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function timeStr() { const n=new Date(); return `${pad(n.getHours())}:${pad(n.getMinutes())}`; }
+function pad(n) { return String(n).padStart(2,'0'); }
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+function init() {
+  loadS();
+  const wd = ['日','一','二','三','四','五','六'];
+  const n = new Date();
+  document.getElementById('hdr-date').textContent =
+    `${n.getFullYear()} 年 ${n.getMonth()+1} 月 ${n.getDate()} 日（週${wd[n.getDay()]}）`;
+  renderToday();
+  setupPWA();
+}
+
+// ══════════════════════════════════════
+// TABS
+// ══════════════════════════════════════
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.querySelector(`[data-tab="${t}"]`).classList.add('active');
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  document.getElementById(`panel-${t}`).classList.add('active');
+  if (t==='history') renderHistory();
+  if (t==='stats')   renderStats();
+}
+
+// ══════════════════════════════════════
+// TODAY
+// ══════════════════════════════════════
+function renderToday() {
+  const today = dateStr();
+  const es = S.entries.filter(e => e.date===today);
+  const totCal   = es.reduce((a,e)=>a+(e.cal||0), 0);
+  const totPrice = es.reduce((a,e)=>a+(e.price||0), 0);
+  document.getElementById('day-cal').textContent   = totCal;
+  document.getElementById('day-price').textContent = totPrice;
+  const pct = Math.min(totCal/S.goal*100, 100);
+  document.getElementById('cal-fill').style.width = pct+'%';
+  document.getElementById('cal-goal-txt').textContent = `目標 ${S.goal} kcal（${Math.round(pct)}%）`;
+  const list = document.getElementById('today-list');
+  list.innerHTML = '';
+  if (!es.length) { document.getElementById('today-empty').style.display=''; return; }
+  document.getElementById('today-empty').style.display = 'none';
+  es.slice().reverse().forEach(e => list.appendChild(mkCard(e)));
+}
+
+function mkCard(e) {
+  const d = document.createElement('div');
+  d.className = 'entry' + (e.source==='uber' ? ' uber-entry' : '');
+  d.innerHTML = `
+    <div class="entry-thumb">${e.thumb ? `<img src="${e.thumb}" alt="">` : (e.source==='uber' ? '🛵' : '🍽')}</div>
+    <div class="entry-body">
+      <div class="entry-name">${esc(e.name)}</div>
+      <div class="entry-chips">
+        ${e.cal   ? `<span class="chip cal">🔥 ${e.cal} kcal</span>` : ''}
+        ${e.price ? `<span class="chip price">💰 ${e.price} 元</span>` : ''}
+        ${e.source==='uber' ? `<span class="chip uber">Uber Eats</span>` : `<span class="chip time">${e.time}</span>`}
+      </div>
+      ${e.note ? `<div class="entry-note">${esc(e.note)}</div>` : ''}
+    </div>
+    <button class="entry-del" onclick="delEntry('${e.id}')">✕</button>
+  `;
+  return d;
+}
+
+function delEntry(id) {
+  if (!confirm('確定刪除？')) return;
+  S.entries = S.entries.filter(e => e.id!==id);
+  saveS(); renderToday(); toast('已刪除');
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ══════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════
+function renderHistory() {
+  const cont = document.getElementById('hist-content');
+  cont.innerHTML = '';
+  const byDate = {};
+  S.entries.forEach(e => (byDate[e.date]=byDate[e.date]||[]).push(e));
+  const dates = Object.keys(byDate).sort().reverse();
+  if (!dates.length) { document.getElementById('hist-empty').style.display=''; return; }
+  document.getElementById('hist-empty').style.display = 'none';
+  dates.forEach(dt => {
+    const es   = byDate[dt];
+    const tCal   = es.reduce((a,e)=>a+(e.cal||0),0);
+    const tPrice = es.reduce((a,e)=>a+(e.price||0),0);
+    const [,m,d] = dt.split('-');
+    const wrap = document.createElement('div');
+    wrap.className = 'hist-day';
+    wrap.innerHTML = `
+      <div class="hist-day-hdr">
+        <div class="hist-date">${parseInt(m)}/${parseInt(d)}</div>
+        <div class="hist-stats">🔥 ${tCal} kcal &nbsp;💰 ${tPrice} 元</div>
+      </div>
+      <div class="entry-list" id="h-${dt}"></div>`;
+    cont.appendChild(wrap);
+    const list = wrap.querySelector(`#h-${dt}`);
+    es.slice().reverse().forEach(e => list.appendChild(mkCard(e)));
+  });
+}
+
+// ══════════════════════════════════════
+// STATS
+// ══════════════════════════════════════
+function renderStats() {
+  const labels=[], calD=[], priceD=[];
+  for (let i=6;i>=0;i--) {
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const ds=dateStr(d);
+    const es=S.entries.filter(e=>e.date===ds);
+    labels.push(`${d.getMonth()+1}/${d.getDate()}`);
+    calD.push(es.reduce((a,e)=>a+(e.cal||0),0));
+    priceD.push(es.reduce((a,e)=>a+(e.price||0),0));
+  }
+  const hasData=calD.filter(v=>v>0);
+  document.getElementById('st-cal').textContent   = hasData.length ? Math.round(hasData.reduce((a,b)=>a+b,0)/hasData.length) : '—';
+  document.getElementById('st-price').textContent = priceD.reduce((a,b)=>a+b,0)||'—';
+  document.getElementById('st-cnt').textContent   = S.entries.filter(e=>(new Date()-new Date(e.date))/86400000<=7).length||'—';
+
+  const baseOpts = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:'#9A9070',font:{size:11}},grid:{color:'#2D2A1C'}},
+      y:{ticks:{color:'#9A9070',font:{size:11}},grid:{color:'#2D2A1C'},beginAtZero:true}
+    }
+  };
+  if (charts.cal) charts.cal.destroy();
+  charts.cal = new Chart(document.getElementById('chart-cal').getContext('2d'), {
+    type:'bar', data:{ labels, datasets:[{data:calD,backgroundColor:'rgba(200,88,28,.55)',borderColor:'#C8581C',borderWidth:1,borderRadius:6}]},
+    options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{callbacks:{label:c=>`${c.raw} kcal`}}}}
+  });
+  if (charts.price) charts.price.destroy();
+  charts.price = new Chart(document.getElementById('chart-price').getContext('2d'), {
+    type:'bar', data:{ labels, datasets:[{data:priceD,backgroundColor:'rgba(106,150,96,.55)',borderColor:'#6A9660',borderWidth:1,borderRadius:6}]},
+    options:{...baseOpts,plugins:{...baseOpts.plugins,tooltip:{callbacks:{label:c=>`${c.raw} 元`}}}}
+  });
+}
+
+// ══════════════════════════════════════
+// ADD ENTRY
+// ══════════════════════════════════════
+function openAdd() {
+  photoB64=null; thumbB64=null;
+  document.getElementById('photo-prev').style.display='none';
+  document.getElementById('photo-zone').style.display='';
+  document.getElementById('photo-in').value='';
+  document.getElementById('text-food').value='';
+  document.getElementById('f-name').value='';
+  document.getElementById('f-cal').value='';
+  document.getElementById('f-price').value='';
+  document.getElementById('f-note').value='';
+  document.getElementById('ai-box').classList.remove('show');
+  document.getElementById('ai-loading').style.display='none';
+  document.getElementById('btn-ai').disabled=true;
+  setMode('photo');
+  openOverlay('add-overlay');
+}
+function setMode(m) {
+  mode=m;
+  document.getElementById('m-photo').classList.toggle('on',m==='photo');
+  document.getElementById('m-text').classList.toggle('on',m==='text');
+  document.getElementById('sec-photo').style.display=m==='photo'?'':'none';
+  document.getElementById('sec-text').style.display=m==='text'?'':'none';
+  document.getElementById('btn-ai').disabled=m==='photo'?!photoB64:!document.getElementById('text-food').value.trim();
+}
+function onTextIn() { document.getElementById('btn-ai').disabled=!document.getElementById('text-food').value.trim(); }
+function onPhoto(ev) {
+  const file=ev.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async ev2=>{
+    const src=ev2.target.result;
+    const prev=document.getElementById('photo-prev');
+    prev.src=src; prev.style.display='block';
+    document.getElementById('photo-zone').style.display='none';
+    photoB64=(await resizeImg(src,1024,.85)).split(',')[1];
+    thumbB64=await resizeImg(src,200,.7);
+    document.getElementById('btn-ai').disabled=false;
+  };
+  reader.readAsDataURL(file);
+}
+function resizeImg(src,maxW,q) {
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{ const sc=Math.min(1,maxW/img.width); const c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc); c.getContext('2d').drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',q)); };
+    img.src=src;
+  });
+}
+
+// ══════════════════════════════════════
+// AI ANALYZE
+// ══════════════════════════════════════
+async function doAnalyze() {
+  const key=S.apiKey;
+  if (!key) { toast('請先在設定中輸入 API Key'); openSettings(); return; }
+  const btn=document.getElementById('btn-ai');
+  btn.disabled=true;
+  document.getElementById('ai-loading').style.display='block';
+  document.getElementById('ai-box').classList.remove('show');
+  try {
+    let msgs;
+    if (mode==='photo'&&photoB64) {
+      const mtype=document.getElementById('photo-in').files[0]?.type||'image/jpeg';
+      msgs=[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mtype,data:photoB64}},{type:'text',text:'這是食物照片。請辨識所有食物，估算總熱量，用JSON回覆：{"name":"中文名稱（簡短）","calories":數字,"breakdown":"熱量說明一行（中文）"}。只回覆JSON。'}]}];
+    } else {
+      const food=document.getElementById('text-food').value.trim();
+      msgs=[{role:'user',content:`估算「${food}」的熱量（大卡），以JSON回覆：{"name":"${food}","calories":數字,"breakdown":"熱量說明一行（中文）"}。只回覆JSON。`}];
+    }
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:256,messages:msgs})});
+    if (!resp.ok) { const err=await resp.json().catch(()=>({})); throw new Error(err.error?.message||`HTTP ${resp.status}`); }
+    const data=await resp.json();
+    const jm=data.content[0].text.trim().match(/\{[\s\S]*?\}/);
+    if (!jm) throw new Error('格式錯誤');
+    const r=JSON.parse(jm[0]);
+    document.getElementById('ai-food-name').textContent=r.name||'';
+    document.getElementById('ai-kcal-val').textContent=r.calories??0;
+    document.getElementById('ai-breakdown').textContent=r.breakdown||'';
+    document.getElementById('ai-box').classList.add('show');
+    document.getElementById('f-name').value=r.name||'';
+    document.getElementById('f-cal').value=r.calories??'';
+  } catch(e) { toast('分析失敗：'+e.message); }
+  finally { document.getElementById('ai-loading').style.display='none'; btn.disabled=false; }
+}
+
+function saveEntry() {
+  const name=document.getElementById('f-name').value.trim();
+  if (!name) { toast('請填寫食物名稱'); return; }
+  S.entries.push({ id:Date.now().toString(), date:dateStr(), time:timeStr(), name, cal:parseInt(document.getElementById('f-cal').value)||0, price:parseInt(document.getElementById('f-price').value)||0, note:document.getElementById('f-note').value.trim(), thumb:thumbB64||null });
+  saveS(); closeOverlay('add-overlay'); renderToday(); toast(`已記錄「${name}」`);
+}
+
+// ══════════════════════════════════════
+// GOOGLE AUTH
+// ══════════════════════════════════════
+function doGoogleLogin() {
+  const clientId = S.googleClientId;
+  if (!clientId) { toast('請先在設定中填入 Google Client ID'); closeOverlay('uber-overlay'); openSettings(); return; }
+
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+    callback: async (resp) => {
+      if (resp.error) { toast('Google 授權失敗：' + resp.error); return; }
+      gAccessToken = resp.access_token;
+      try {
+        const ui = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: 'Bearer '+gAccessToken } }).then(r=>r.json());
+        gUserInfo = ui;
+      } catch(e) {}
+      renderUberBody();
+    }
+  });
+  client.requestAccessToken();
+}
+
+function gmailLogout() {
+  if (gAccessToken) google.accounts.oauth2.revoke(gAccessToken, () => {});
+  gAccessToken = null; gUserInfo = null;
+  renderUberBody();
+  toast('已登出 Google');
+}
+
+// ══════════════════════════════════════
+// UBER SHEET
+// ══════════════════════════════════════
+let uberItems = [];  // parsed orders ready for import
+
+function openUberSheet() {
+  uberItems = [];
+  openOverlay('uber-overlay');
+  renderUberBody();
+}
+
+function renderUberBody() {
+  const el = document.getElementById('uber-body');
+
+  if (!gAccessToken) {
+    el.innerHTML = `
+      <p class="settings-note">連結 Google 帳號，自動搜尋 Gmail 裡的 Uber Eats 訂單確認信，並用 AI 解析食物名稱和金額匯入食記。</p>
+      <button class="btn-google" onclick="doGoogleLogin()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        以 Google 帳號登入
+      </button>
+      <button class="btn btn-sec" onclick="closeOverlay('uber-overlay')">取消</button>
+    `;
+    return;
+  }
+
+  const name  = gUserInfo?.name  || '已登入';
+  const email = gUserInfo?.email || '';
+  const pic   = gUserInfo?.picture || '';
+
+  el.innerHTML = `
+    <div class="gmail-status">
+      <div class="gmail-avatar">${pic ? `<img src="${pic}" referrerpolicy="no-referrer">` : '👤'}</div>
+      <div><div class="gmail-name">${esc(name)}</div><div class="gmail-email">${esc(email)}</div></div>
+    </div>
+    <div id="uber-inner">
+      <button class="btn btn-prime" onclick="fetchUberEmails()" style="margin-bottom:10px">🔍 搜尋 Uber Eats 訂單信</button>
+      <button class="btn btn-sec" onclick="gmailLogout()">登出 Google</button>
+    </div>
+  `;
+}
+
+async function fetchUberEmails() {
+  if (!gAccessToken) return;
+  const inner = document.getElementById('uber-inner');
+  inner.innerHTML = `
+    <div class="import-progress">
+      <div class="big-spin"></div>
+      <div id="prog-txt">搜尋 Uber Eats 訂單信…</div>
+      <div class="import-progress-bar"><div class="import-progress-fill" id="prog-fill" style="width:0%"></div></div>
+    </div>`;
+
+  try {
+    const setP = (pct, txt) => {
+      document.getElementById('prog-fill').style.width = pct+'%';
+      if (txt) document.getElementById('prog-txt').textContent = txt;
+    };
+
+    // Search Gmail for Uber Eats order confirmation emails
+    const q = encodeURIComponent('from:(uber.eats@uber.com OR ubereats@uber.com OR noreply@uber.com) subject:(訂單 OR order OR "Your order" OR "你的訂單") newer_than:90d');
+    setP(15, '搜尋信件中…');
+    const listResp = await gFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${q}&maxResults=30`);
+    const msgs = listResp.messages || [];
+
+    if (!msgs.length) {
+      inner.innerHTML = `
+        <div class="empty" style="padding:30px 0">
+          <div class="big" style="font-size:32px">📭</div>
+          <p>找不到 Uber Eats 訂單確認信<br><small>確認 Gmail 裡有 Uber Eats 的確認信</small></p>
+        </div>
+        <button class="btn btn-sec" onclick="renderUberBody()">返回</button>`;
+      return;
+    }
+
+    setP(30, `找到 ${msgs.length} 封，解析中…`);
+
+    // Fetch each email body
+    const rawEmails = [];
+    for (let i=0; i<Math.min(msgs.length, 20); i++) {
+      const m = await gFetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgs[i].id}?format=full`);
+      const body = extractEmailText(m);
+      const date = new Date(parseInt(m.internalDate));
+      rawEmails.push({ id: m.id, date: dateStr(date), time: `${pad(date.getHours())}:${pad(date.getMinutes())}`, body });
+      setP(30 + Math.round((i+1)/Math.min(msgs.length,20)*40), `解析第 ${i+1}/${Math.min(msgs.length,20)} 封…`);
+    }
+
+    setP(75, 'AI 分析訂單內容…');
+
+    // Send to Claude for parsing
+    const parsed = await parseEmailsWithAI(rawEmails);
+    setP(100, '完成！');
+
+    uberItems = parsed;
+    showImportList();
+  } catch(e) {
+    inner.innerHTML = `
+      <div class="empty" style="padding:30px 0">
+        <div class="big" style="font-size:32px">⚠️</div>
+        <p>發生錯誤<br><small>${esc(e.message)}</small></p>
+      </div>
+      <button class="btn btn-sec" onclick="renderUberBody()">返回</button>`;
+    console.error(e);
+  }
+}
+
+async function gFetch(url) {
+  const r = await fetch(url, { headers: { Authorization: 'Bearer '+gAccessToken } });
+  if (!r.ok) throw new Error(`Gmail API error ${r.status}`);
+  return r.json();
+}
+
+function extractEmailText(msg) {
+  // Try to extract plain text or HTML from email payload
+  const extract = (part) => {
+    if (!part) return '';
+    if (part.mimeType === 'text/plain' && part.body?.data) {
+      return atob(part.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+    }
+    if (part.parts) {
+      for (const p of part.parts) { const t = extract(p); if (t) return t; }
+    }
+    if (part.mimeType === 'text/html' && part.body?.data) {
+      const html = atob(part.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      return tmp.textContent || '';
+    }
+    return '';
+  };
+  return extract(msg.payload).slice(0, 2000);  // limit to 2000 chars per email
+}
+
+async function parseEmailsWithAI(emails) {
+  const key = S.apiKey;
+  if (!key) { toast('需要 Claude API Key 才能解析信件'); return []; }
+
+  // Process in batches to save tokens
+  const results = [];
+  for (const email of emails) {
+    try {
+      const prompt = `以下是一封 Uber Eats 訂單確認信的文字內容。請從中擷取：1) 餐廳名稱 2) 訂購的食物品項（列表） 3) 訂單總金額（只要數字）。
+以 JSON 格式回覆：{"restaurant":"餐廳名","items":["食物1","食物2"],"total":金額數字}
+如果無法擷取，回覆 {"skip":true}。只回覆JSON。
+
+信件內容：
+${email.body}`;
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key':key, 'anthropic-version':'2023-06-01', 'content-type':'application/json', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ model:'claude-haiku-4-5-20251001', max_tokens:300, messages:[{role:'user',content:prompt}] })
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const jm = data.content[0].text.trim().match(/\{[\s\S]*?\}/);
+      if (!jm) continue;
+      const r = JSON.parse(jm[0]);
+      if (r.skip) continue;
+      results.push({ ...email, restaurant: r.restaurant||'Uber Eats', items: r.items||[], total: r.total||0 });
+    } catch(e) { console.warn('parse error', e); }
+  }
+  return results;
+}
+
+function showImportList() {
+  const inner = document.getElementById('uber-inner');
+  if (!uberItems.length) {
+    inner.innerHTML = `
+      <div class="empty" style="padding:30px 0">
+        <div class="big" style="font-size:32px">🤔</div>
+        <p>找不到可解析的 Uber Eats 訂單<br><small>確認信件格式是否為英文或中文</small></p>
+      </div>
+      <button class="btn btn-sec" onclick="renderUberBody()">返回</button>`;
+    return;
+  }
+
+  // Filter out already imported
+  const existingIds = new Set(S.entries.filter(e=>e.gmailId).map(e=>e.gmailId));
+  const fresh = uberItems.filter(u => !existingIds.has(u.id));
+
+  let html = `
+    <div class="sec-title">找到 ${fresh.length} 筆新訂單 <span class="sel-all" onclick="toggleAll()">全選</span></div>
+    <div class="import-list" id="import-list">`;
+
+  fresh.forEach((item, i) => {
+    const itemsStr = item.items.join('、') || '（未知品項）';
+    html += `
+      <div class="import-item" id="ii-${i}" onclick="toggleItem(${i})">
+        <div class="import-item-check" id="ic-${i}">✓</div>
+        <div class="import-item-body">
+          <div class="import-item-name">${esc(item.restaurant)} — ${esc(itemsStr)}</div>
+          <div class="import-item-meta">${item.date} &nbsp;💰 ${item.total} 元</div>
+        </div>
+      </div>`;
+  });
+
+  html += `</div>
+    <button class="btn btn-prime" onclick="doImport()" id="btn-import">匯入選取的訂單</button>
+    <button class="btn btn-sec" onclick="renderUberBody()" style="margin-top:8px">返回</button>`;
+
+  inner.innerHTML = html;
+
+  // Default: all selected
+  const sel = new Set(fresh.map((_,i)=>i));
+  window._uberSel = sel;
+  window._uberFresh = fresh;
+  updateSelUI();
+}
+
+window._uberSel = new Set();
+window._uberFresh = [];
+
+function toggleItem(i) {
+  if (window._uberSel.has(i)) window._uberSel.delete(i);
+  else window._uberSel.add(i);
+  updateSelUI();
+}
+
+function toggleAll() {
+  if (window._uberSel.size === window._uberFresh.length) window._uberSel.clear();
+  else window._uberFresh.forEach((_,i) => window._uberSel.add(i));
+  updateSelUI();
+}
+
+function updateSelUI() {
+  window._uberFresh.forEach((_,i) => {
+    const item = document.getElementById(`ii-${i}`);
+    const chk  = document.getElementById(`ic-${i}`);
+    if (!item) return;
+    item.classList.toggle('selected', window._uberSel.has(i));
+    chk.textContent = window._uberSel.has(i) ? '✓' : '';
+  });
+  const btn = document.getElementById('btn-import');
+  if (btn) btn.textContent = `匯入 ${window._uberSel.size} 筆訂單`;
+}
+
+function doImport() {
+  const toImport = [...window._uberSel].map(i => window._uberFresh[i]);
+  if (!toImport.length) { toast('請選擇至少一筆'); return; }
+
+  toImport.forEach(item => {
+    const name = item.restaurant + (item.items.length ? `（${item.items.slice(0,2).join('、')}${item.items.length>2?'…':''}）` : '');
+    S.entries.push({
+      id: 'uber_'+item.id,
+      gmailId: item.id,
+      date: item.date,
+      time: item.time || '12:00',
+      name,
+      cal: 0,
+      price: item.total || 0,
+      note: item.items.join('、'),
+      thumb: null,
+      source: 'uber'
+    });
+  });
+  saveS();
+  closeOverlay('uber-overlay');
+  renderToday();
+  toast(`✓ 匯入 ${toImport.length} 筆 Uber Eats 訂單`);
+}
+
+// ══════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════
+function openSettings() {
+  document.getElementById('set-key').value  = S.apiKey||'';
+  document.getElementById('set-gcid').value = S.googleClientId||'';
+  document.getElementById('set-goal').value = S.goal||2000;
+  openOverlay('set-overlay');
+}
+function saveSettings() {
+  S.apiKey        = document.getElementById('set-key').value.trim();
+  S.googleClientId= document.getElementById('set-gcid').value.trim();
+  S.goal          = parseInt(document.getElementById('set-goal').value)||2000;
+  saveS(); closeOverlay('set-overlay'); renderToday(); toast('設定已儲存');
+}
+
+// ══════════════════════════════════════
+// OVERLAY HELPERS
+// ══════════════════════════════════════
+function openOverlay(id)  { document.getElementById(id).classList.add('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function bgClose(ev,id)   { if (ev.target===document.getElementById(id)) closeOverlay(id); }
+
+// ══════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════
+let toastTimer;
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2600);
+}
+
+// ══════════════════════════════════════
+// PWA
+// ══════════════════════════════════════
+function setupPWA() {
+  const mf={name:'食記 FoodLog',short_name:'食記',description:'飲食熱量與花費記錄',start_url:'.',display:'standalone',background_color:'#17150D',theme_color:'#17150D',icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C8581C'/><text y='.9em' font-size='70' x='15'>🍽</text></svg>",sizes:'192x192',type:'image/svg+xml'}]};
+  const blob=new Blob([JSON.stringify(mf)],{type:'application/json'});
+  const link=document.createElement('link');
+  link.rel='manifest';link.href=URL.createObjectURL(blob);
+  document.head.appendChild(link);
+  if('serviceWorker'in navigator){const sw=`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>new Response('',{status:503}))));`;const swBlob=new Blob([sw],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});}
+}
+
+init();
+</script>
+</body>
+</html>
